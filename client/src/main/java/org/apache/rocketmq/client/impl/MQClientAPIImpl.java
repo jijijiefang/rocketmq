@@ -793,6 +793,14 @@ public class MQClientAPIImpl {
         return this.processPullResponse(response, addr);
     }
 
+    /**
+     * 处理拉取消息响应
+     * @param response 响应
+     * @param addr broker地址
+     * @return 响应
+     * @throws MQBrokerException 服务端异常
+     * @throws RemotingCommandException 远程异常
+     */
     private PullResult processPullResponse(
         final RemotingCommand response,
         final String addr) throws MQBrokerException, RemotingCommandException {
@@ -817,7 +825,10 @@ public class MQClientAPIImpl {
 
         PullMessageResponseHeader responseHeader =
             (PullMessageResponseHeader) response.decodeCommandCustomHeader(PullMessageResponseHeader.class);
-
+        //pullStatus 拉取结果
+        //nextBeginOffset 下次拉取偏移量
+        //minOffset 消息队列最小偏移量
+        //maxOffset 消息队列最大偏移量
         return new PullResultExt(pullStatus, responseHeader.getNextBeginOffset(), responseHeader.getMinOffset(),
             responseHeader.getMaxOffset(), null, responseHeader.getSuggestWhichBrokerId(), response.getBody());
     }
