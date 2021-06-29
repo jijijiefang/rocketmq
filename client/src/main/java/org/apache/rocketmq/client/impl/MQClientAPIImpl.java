@@ -704,6 +704,18 @@ public class MQClientAPIImpl {
         return sendResult;
     }
 
+    /**
+     * 根据消息拉取模式拉取消息
+     * @param addr broker地址
+     * @param requestHeader 请求头
+     * @param timeoutMillis 超时时间
+     * @param communicationMode 拉取模式
+     * @param pullCallback 回调方法
+     * @return 拉取结果
+     * @throws RemotingException 远程异常
+     * @throws MQBrokerException broker异常
+     * @throws InterruptedException 线程中断异常
+     */
     public PullResult pullMessage(
         final String addr,
         final PullMessageRequestHeader requestHeader,
@@ -730,6 +742,15 @@ public class MQClientAPIImpl {
         return null;
     }
 
+    /**
+     * 异步拉取消息
+     * @param addr broker地址
+     * @param request 请求
+     * @param timeoutMillis 超时时间
+     * @param pullCallback 回调方法
+     * @throws RemotingException
+     * @throws InterruptedException
+     */
     private void pullMessageAsync(
         final String addr,
         final RemotingCommand request,

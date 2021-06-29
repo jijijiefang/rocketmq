@@ -224,6 +224,10 @@ public class MQClientInstance {
         return mqList;
     }
 
+    /**
+     * MQ客户端实例启动
+     * @throws MQClientException MQ客户端异常
+     */
     public void start() throws MQClientException {
 
         synchronized (this) {
@@ -238,7 +242,7 @@ public class MQClientInstance {
                     this.mQClientAPIImpl.start();
                     // Start various schedule tasks
                     this.startScheduledTask();
-                    // Start pull service
+                    // Start pull service 启动拉取消息线程
                     this.pullMessageService.start();
                     // Start rebalance service
                     this.rebalanceService.start();

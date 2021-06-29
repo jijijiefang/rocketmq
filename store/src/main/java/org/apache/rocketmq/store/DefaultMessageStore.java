@@ -552,6 +552,16 @@ public class DefaultMessageStore implements MessageStore {
         return commitLog;
     }
 
+    /**
+     * 查找消息
+     * @param group Consumer group that launches this query.消费组名称
+     * @param topic Topic to query.主题名称
+     * @param queueId Queue ID to query.队列ID
+     * @param offset Logical offset to start from.待拉取偏移量
+     * @param maxMsgNums Maximum count of messages to query.最大拉取消息条数
+     * @param messageFilter Message filter used to screen desired messages.消息过滤器
+     * @return 查找消息结果
+     */
     public GetMessageResult getMessage(final String group, final String topic, final int queueId, final long offset,
         final int maxMsgNums,
         final MessageFilter messageFilter) {
@@ -568,17 +578,20 @@ public class DefaultMessageStore implements MessageStore {
         long beginTime = this.getSystemClock().now();
 
         GetMessageStatus status = GetMessageStatus.NO_MESSAGE_IN_QUEUE;
+        //待查找队列偏移量
         long nextBeginOffset = offset;
         long minOffset = 0;
         long maxOffset = 0;
 
         GetMessageResult getResult = new GetMessageResult();
-
+        //commitLog文件最大偏移量
         final long maxOffsetPy = this.commitLog.getMaxOffset();
-
+        //通过主题和队列ID获取消息消费队列
         ConsumeQueue consumeQueue = findConsumeQueue(topic, queueId);
         if (consumeQueue != null) {
+            //当前消息队列最小偏移量
             minOffset = consumeQueue.getMinOffsetInQueue();
+            //当前消息队列最大偏移量
             maxOffset = consumeQueue.getMaxOffsetInQueue();
 
             if (maxOffset == 0) {
@@ -611,6 +624,7 @@ public class DefaultMessageStore implements MessageStore {
                         final boolean diskFallRecorded = this.messageStoreConfig.isDiskFallRecorded();
                         ConsumeQueueExt.CqExtUnit cqExtUnit = new ConsumeQueueExt.CqExtUnit();
                         for (; i < bufferConsumeQueue.getSize() && i < maxFilterMessageCount; i += ConsumeQueue.CQ_STORE_UNIT_SIZE) {
+                            //消息在commitLog的物理偏移量
                             long offsetPy = bufferConsumeQueue.getByteBuffer().getLong();
                             int sizePy = bufferConsumeQueue.getByteBuffer().getInt();
                             long tagsCode = bufferConsumeQueue.getByteBuffer().getLong();
@@ -650,7 +664,7 @@ public class DefaultMessageStore implements MessageStore {
 
                                 continue;
                             }
-
+                            //根据拉取偏移量在commitLog查找消息
                             SelectMappedBufferResult selectResult = this.commitLog.getMessage(offsetPy, sizePy);
                             if (null == selectResult) {
                                 if (getResult.getBufferTotalSize() == 0) {
@@ -683,10 +697,12 @@ public class DefaultMessageStore implements MessageStore {
                         }
 
                         nextBeginOffset = offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
-
+                        //commitLog最大偏移量-当前拉取消息最大偏移量
                         long diff = maxOffsetPy - maxPhyOffsetPulling;
+                        //总内存*40%
                         long memory = (long) (StoreUtil.TOTAL_PHYSICAL_MEMORY_SIZE
                             * (this.messageStoreConfig.getAccessMessageInMemoryMaxRatio() / 100.0));
+                        //根据broker内存占用情况建议下次从salve节点或master节点拉取消息
                         getResult.setSuggestPullingFromSlave(diff > memory);
                     } finally {
 

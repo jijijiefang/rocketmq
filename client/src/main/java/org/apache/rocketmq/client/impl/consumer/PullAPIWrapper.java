@@ -140,6 +140,26 @@ public class PullAPIWrapper {
         }
     }
 
+    /**
+     *
+     * @param mq 消费队列
+     * @param subExpression 消息过滤表达式
+     * @param expressionType 消息表达式类型
+     * @param subVersion
+     * @param offset 消息拉取偏移量
+     * @param maxNums 本次拉取消息最大条目数，默认为32
+     * @param sysFlag 拉取系统标记
+     * @param commitOffset 当前MessageQueue消费进度
+     * @param brokerSuspendMaxTimeMillis 消息拉取过程中允许Broker挂起时间，默认为15S
+     * @param timeoutMillis 消息拉取超时时间
+     * @param communicationMode 消息拉取模式，默认为异步拉取
+     * @param pullCallback 回调方法
+     * @return 拉取结果
+     * @throws MQClientException MQ客户端异常
+     * @throws RemotingException 远程异常
+     * @throws MQBrokerException MQ服务端异常
+     * @throws InterruptedException 线程中断异常
+     */
     public PullResult pullKernelImpl(
         final MessageQueue mq,
         final String subExpression,
@@ -154,6 +174,7 @@ public class PullAPIWrapper {
         final CommunicationMode communicationMode,
         final PullCallback pullCallback
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
+        //根据brokerName获取Broker地址，根据建议从主节点还是从节点拉取
         FindBrokerResult findBrokerResult =
             this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(),
                 this.recalculatePullFromWhichNode(mq), false);
@@ -196,7 +217,7 @@ public class PullAPIWrapper {
             if (PullSysFlag.hasClassFilterFlag(sysFlagInner)) {
                 brokerAddr = computePullFromWhichFilterServer(mq.getTopic(), brokerAddr);
             }
-
+            //使用netty调用服务端拉取消息
             PullResult pullResult = this.mQClientFactory.getMQClientAPIImpl().pullMessage(
                 brokerAddr,
                 requestHeader,
@@ -210,16 +231,22 @@ public class PullAPIWrapper {
         throw new MQClientException("The broker[" + mq.getBrokerName() + "] not exist", null);
     }
 
+    /**
+     * 获取从主节点还是从节点拉取
+     * @param mq 消费队列
+     * @return long
+     */
     public long recalculatePullFromWhichNode(final MessageQueue mq) {
+        //主节点
         if (this.isConnectBrokerByUser()) {
             return this.defaultBrokerId;
         }
-
+        //建议
         AtomicLong suggest = this.pullFromWhichNodeTable.get(mq);
         if (suggest != null) {
             return suggest.get();
         }
-
+        //主节点
         return MixAll.MASTER_ID;
     }
 
