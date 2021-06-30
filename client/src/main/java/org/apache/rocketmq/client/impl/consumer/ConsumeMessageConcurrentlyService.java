@@ -205,7 +205,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
     }
 
     /**
-     * 提交消费消息请求
+     * 提交并发消费消息请求
      * @param msgs 消息
      * @param processQueue 处理队列
      * @param messageQueue 消息队列
@@ -374,7 +374,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
     }
 
     /**
-     * 消息消费请求
+     * 消息并发消费请求
      */
     class ConsumeRequest implements Runnable {
         private final List<MessageExt> msgs;
@@ -428,6 +428,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                         MessageAccessor.setConsumeStartTimeStamp(msg, String.valueOf(System.currentTimeMillis()));
                     }
                 }
+                //调用用户实现listener消费消息
                 status = listener.consumeMessage(Collections.unmodifiableList(msgs), context);
             } catch (Throwable e) {
                 log.warn("consumeMessage exception: {} Group: {} Msgs: {} MQ: {}",

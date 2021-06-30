@@ -28,7 +28,7 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.utils.ThreadUtils;
 
 /**
- * 消息拉取线程
+ * 拉取消息线程
  */
 public class PullMessageService extends ServiceThread {
     private final InternalLogger log = ClientLogger.getLog();
