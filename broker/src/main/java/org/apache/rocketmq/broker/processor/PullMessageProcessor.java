@@ -101,11 +101,11 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
 
     /**
      * 服务端拉取消息
-     * @param channel
-     * @param request
-     * @param brokerAllowSuspend
+     * @param channel 网络通道
+     * @param request 消息拉取请求
+     * @param brokerAllowSuspend Broker端是否支持挂起，true表示如果未找到消息则挂起；false表示未找到消息直接返回客户端未找到
      * @return
-     * @throws RemotingCommandException
+     * @throws RemotingCommandException 远程连接异常
      */
     private RemotingCommand processRequest(final Channel channel, RemotingCommand request, boolean brokerAllowSuspend)
         throws RemotingCommandException {
@@ -424,6 +424,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                         response = null;
                     }
                     break;
+                //如果没有拉取到消息，暂停拉取请求
                 case ResponseCode.PULL_NOT_FOUND:
 
                     if (brokerAllowSuspend && hasSuspendFlag) {
@@ -437,6 +438,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                         int queueId = requestHeader.getQueueId();
                         PullRequest pullRequest = new PullRequest(request, channel, pollingTimeMills,
                             this.brokerController.getMessageStore().now(), offset, subscriptionData, messageFilter);
+                        //暂停拉取消息请求
                         this.brokerController.getPullRequestHoldService().suspendPullRequest(topic, queueId, pullRequest);
                         response = null;
                         break;
@@ -565,6 +567,12 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
         }
     }
 
+    /**
+     * 执行服务端消息拉取当被唤醒
+     * @param channel 通道
+     * @param request 请求
+     * @throws RemotingCommandException
+     */
     public void executeRequestWhenWakeup(final Channel channel,
         final RemotingCommand request) throws RemotingCommandException {
         Runnable run = new Runnable() {
@@ -577,6 +585,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                         response.setOpaque(request.getOpaque());
                         response.markResponseType();
                         try {
+                            //响应写到返回通道
                             channel.writeAndFlush(response).addListener(new ChannelFutureListener() {
                                 @Override
                                 public void operationComplete(ChannelFuture future) throws Exception {

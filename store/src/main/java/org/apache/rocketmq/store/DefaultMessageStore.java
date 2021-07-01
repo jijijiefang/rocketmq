@@ -1898,6 +1898,9 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    /**
+     * 根据commitLog转发消息至ConsumeQueue和IndexFile文件
+     */
     class ReputMessageService extends ServiceThread {
 
         private volatile long reputFromOffset = 0;
@@ -1961,7 +1964,9 @@ public class DefaultMessageStore implements MessageStore {
                             if (dispatchRequest.isSuccess()) {
                                 if (size > 0) {
                                     DefaultMessageStore.this.doDispatch(dispatchRequest);
-
+                                    //当新消息到达commitLog，ReputMessageService线程负责转发消息到ConsumeQueue、IndexFile,如果Broker开启了长轮询
+                                    //并且当前Broker是主节点，调用pullRequestHoldService线程的notifyMessageArriving唤醒挂起线程。
+                                    //如果消费队列最大偏移量大于拉取消息偏移量，则拉取消息；长轮询模式使消息拉取能实现准实时。
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()
                                         && DefaultMessageStore.this.brokerConfig.isLongPollingEnable()) {
                                         DefaultMessageStore.this.messageArrivingListener.arriving(dispatchRequest.getTopic(),
