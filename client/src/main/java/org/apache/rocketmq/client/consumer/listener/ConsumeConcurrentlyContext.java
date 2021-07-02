@@ -24,9 +24,13 @@ import org.apache.rocketmq.common.message.MessageQueue;
 public class ConsumeConcurrentlyContext {
     private final MessageQueue messageQueue;
     /**
+     * 消息消费重试策略
      * Message consume retry strategy<br>
+     * -1 不重试，直接放入DLQ
      * -1,no retry,put into DLQ directly<br>
+     * 0 由broker控制重试
      * 0,broker control retry frequency<br>
+     * >0 客户端控制重试策略
      * >0,client control retry frequency
      */
     private int delayLevelWhenNextConsume = 0;

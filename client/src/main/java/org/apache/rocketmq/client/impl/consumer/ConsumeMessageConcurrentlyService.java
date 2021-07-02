@@ -149,6 +149,12 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         return this.consumeExecutor.getCorePoolSize();
     }
 
+    /**
+     * 直接消费消息，用于通过管理命令收到消费信息
+     * @param msg 消息
+     * @param brokerName brokerName
+     * @return 消费结果
+     */
     @Override
     public ConsumeMessageDirectlyResult consumeMessageDirectly(MessageExt msg, String brokerName) {
         ConsumeMessageDirectlyResult result = new ConsumeMessageDirectlyResult();
@@ -206,7 +212,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
 
     /**
      * 提交并发消费消息请求
-     * @param msgs 消息
+     * @param msgs 消息列表
      * @param processQueue 处理队列
      * @param messageQueue 消息队列
      * @param dispatchToConsume 是否提交消费
@@ -264,6 +270,12 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         }
     }
 
+    /**
+     * 根据消息监听器返回结果计算ackIndex
+     * @param status 消费状态
+     * @param context 上下文
+     * @param consumeRequest 消费请求
+     */
     public void processConsumeResult(
         final ConsumeConcurrentlyStatus status,
         final ConsumeConcurrentlyContext context,
@@ -294,18 +306,24 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         }
 
         switch (this.defaultMQPushConsumer.getMessageModel()) {
+            //广播模式消息消费失败，消息不会被重新消费
             case BROADCASTING:
                 for (int i = ackIndex + 1; i < consumeRequest.getMsgs().size(); i++) {
                     MessageExt msg = consumeRequest.getMsgs().get(i);
                     log.warn("BROADCASTING, the message consume failed, drop it, {}", msg.toString());
                 }
                 break;
+            //集群模式
             case CLUSTERING:
                 List<MessageExt> msgBackFailed = new ArrayList<MessageExt>(consumeRequest.getMsgs().size());
+                //消费成功不会sendMessageBack，消费失败会进去for循环
                 for (int i = ackIndex + 1; i < consumeRequest.getMsgs().size(); i++) {
                     MessageExt msg = consumeRequest.getMsgs().get(i);
+                    //发送消息到Broker,Broker收到消息放入重试队列，然后进行重试消费
                     boolean result = this.sendMessageBack(msg, context);
+                    //发小延迟消息失败延迟5S消费
                     if (!result) {
+                        //消费次数+1
                         msg.setReconsumeTimes(msg.getReconsumeTimes() + 1);
                         msgBackFailed.add(msg);
                     }
@@ -313,7 +331,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
 
                 if (!msgBackFailed.isEmpty()) {
                     consumeRequest.getMsgs().removeAll(msgBackFailed);
-
+                    //延迟5S，重新消费
                     this.submitConsumeRequestLater(msgBackFailed, consumeRequest.getProcessQueue(), consumeRequest.getMessageQueue());
                 }
                 break;
@@ -331,7 +349,14 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         return this.defaultMQPushConsumerImpl.getConsumerStatsManager();
     }
 
+    /**
+     * 发送消息返回broker
+     * @param msg 消息
+     * @param context  并发消费上下文
+     * @return boolean
+     */
     public boolean sendMessageBack(final MessageExt msg, final ConsumeConcurrentlyContext context) {
+        //获取消息消费重试策略
         int delayLevel = context.getDelayLevelWhenNextConsume();
 
         // Wrap topic with namespace before sending back message.
@@ -346,6 +371,12 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         return false;
     }
 
+    /**
+     * 延迟5S重新消费
+     * @param msgs 消息列表
+     * @param processQueue 消费队列
+     * @param messageQueue 消息队列
+     */
     private void submitConsumeRequestLater(
         final List<MessageExt> msgs,
         final ProcessQueue processQueue,

@@ -514,6 +514,16 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         log.info("resume this consumer, {}", this.defaultMQPushConsumer.getConsumerGroup());
     }
 
+    /**
+     * 发送消息到Broker
+     * @param msg 消息
+     * @param delayLevel 延迟等级
+     * @param brokerName broker名称
+     * @throws RemotingException 远程异常
+     * @throws MQBrokerException 服务端异常
+     * @throws InterruptedException 线程中断异常
+     * @throws MQClientException 客户端异常
+     */
     public void sendMessageBack(MessageExt msg, int delayLevel, final String brokerName)
         throws RemotingException, MQBrokerException, InterruptedException, MQClientException {
         try {
@@ -543,6 +553,10 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         }
     }
 
+    /**
+     * 获取消费最大重试次数，默认为16
+     * @return 重试次数
+     */
     private int getMaxReconsumeTimes() {
         // default reconsume times: 16
         if (this.defaultMQPushConsumer.getMaxReconsumeTimes() == -1) {
@@ -1168,6 +1182,11 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         return queueTimeSpan;
     }
 
+    /**
+     * 重置重试消息主题名
+     * @param msgs 消息列表
+     * @param consumerGroup 消费群组
+     */
     public void resetRetryAndNamespace(final List<MessageExt> msgs, String consumerGroup) {
         final String groupTopic = MixAll.getRetryTopic(consumerGroup);
         for (MessageExt msg : msgs) {

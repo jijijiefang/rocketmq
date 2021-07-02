@@ -19,6 +19,9 @@ package org.apache.rocketmq.common.protocol.body;
 
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
+/**
+ * 直接消费消息结果
+ */
 public class ConsumeMessageDirectlyResult extends RemotingSerializable {
     private boolean order = false;
     private boolean autoCommit = true;
