@@ -63,6 +63,9 @@ import org.apache.rocketmq.store.index.QueryOffsetResult;
 import org.apache.rocketmq.store.schedule.ScheduleMessageService;
 import org.apache.rocketmq.store.stats.BrokerStatsManager;
 
+/**
+ * RocketMQ默认消息存储实现
+ */
 public class DefaultMessageStore implements MessageStore {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
@@ -176,7 +179,9 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     /**
-     * @throws IOException
+     * 加载CommitLog文件、ConsumQueue文件和IndexFile文件
+     * @return 是否加载成功
+     * @throws IOException IO异常
      */
     public boolean load() {
         boolean result = true;
@@ -184,7 +189,7 @@ public class DefaultMessageStore implements MessageStore {
         try {
             boolean lastExitOK = !this.isTempFileExist();
             log.info("last shutdown {}", lastExitOK ? "normally" : "abnormally");
-
+            //加载周期消息处理类
             if (null != scheduleMessageService) {
                 result = result && this.scheduleMessageService.load();
             }
