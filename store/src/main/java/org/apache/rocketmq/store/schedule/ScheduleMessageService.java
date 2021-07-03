@@ -44,17 +44,21 @@ import org.apache.rocketmq.store.PutMessageResult;
 import org.apache.rocketmq.store.PutMessageStatus;
 import org.apache.rocketmq.store.SelectMappedBufferResult;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
-
+/**
+ * 周期定时任务消息处理类
+ */
 public class ScheduleMessageService extends ConfigManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
-
+    //第一次调度延时时间，默认1S
     private static final long FIRST_DELAY_TIME = 1000L;
+    //每一延时级别调度一次后延迟该时间间隔后再放入调度池
     private static final long DELAY_FOR_A_WHILE = 100L;
+    //发送异常后延迟该时间后再继续参与调度
     private static final long DELAY_FOR_A_PERIOD = 10000L;
-
+    //延迟等级-延迟毫秒数对应关系
     private final ConcurrentMap<Integer /* level */, Long/* delay timeMillis */> delayLevelTable =
         new ConcurrentHashMap<Integer, Long>(32);
-
+    //延迟等级-消费进度对应关系
     private final ConcurrentMap<Integer /* level */, Long/* offset */> offsetTable =
         new ConcurrentHashMap<Integer, Long>(32);
     private final DefaultMessageStore defaultMessageStore;
@@ -189,6 +193,10 @@ public class ScheduleMessageService extends ConfigManager {
         return delayOffsetSerializeWrapper.toJson(prettyFormat);
     }
 
+    /**
+     * 初始化延迟等级-延迟毫秒数关系Map
+     * @return boolean
+     */
     public boolean parseDelayLevel() {
         HashMap<String, Long> timeUnitTable = new HashMap<String, Long>();
         timeUnitTable.put("s", 1000L);
