@@ -40,6 +40,9 @@ import org.apache.rocketmq.common.protocol.heartbeat.ConsumeType;
 import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
 import org.apache.rocketmq.common.protocol.heartbeat.SubscriptionData;
 
+/**
+ * 队列再平衡实现类
+ */
 public abstract class RebalanceImpl {
     protected static final InternalLogger log = ClientLogger.getLog();
     protected final ConcurrentMap<MessageQueue, ProcessQueue> processQueueTable = new ConcurrentHashMap<MessageQueue, ProcessQueue>(64);
@@ -61,6 +64,11 @@ public abstract class RebalanceImpl {
         this.mQClientFactory = mQClientFactory;
     }
 
+    /**
+     * 解锁消息消费队列
+     * @param mq 消息消费队列
+     * @param oneway 调用方式
+     */
     public void unlock(final MessageQueue mq, final boolean oneway) {
         FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(), MixAll.MASTER_ID, true);
         if (findBrokerResult != null) {
@@ -81,6 +89,10 @@ public abstract class RebalanceImpl {
         }
     }
 
+    /**
+     * 解锁所有消息消费队列
+     * @param oneway 调用方式
+     */
     public void unlockAll(final boolean oneway) {
         HashMap<String, Set<MessageQueue>> brokerMqs = this.buildProcessQueueTableByBrokerName();
 
@@ -115,6 +127,10 @@ public abstract class RebalanceImpl {
         }
     }
 
+    /**
+     * 根据Broker名称构建消息消费队列
+     * @return map
+     */
     private HashMap<String/* brokerName */, Set<MessageQueue>> buildProcessQueueTableByBrokerName() {
         HashMap<String, Set<MessageQueue>> result = new HashMap<String, Set<MessageQueue>>();
         for (MessageQueue mq : this.processQueueTable.keySet()) {
@@ -130,6 +146,11 @@ public abstract class RebalanceImpl {
         return result;
     }
 
+    /**
+     * 锁定消息消费队列
+     * @param mq 消息消费队列
+     * @return 加锁结果
+     */
     public boolean lock(final MessageQueue mq) {
         FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(), MixAll.MASTER_ID, true);
         if (findBrokerResult != null) {
@@ -163,6 +184,9 @@ public abstract class RebalanceImpl {
         return false;
     }
 
+    /**
+     * 锁定所有消费队列
+     */
     public void lockAll() {
         HashMap<String, Set<MessageQueue>> brokerMqs = this.buildProcessQueueTableByBrokerName();
 
@@ -213,6 +237,10 @@ public abstract class RebalanceImpl {
         }
     }
 
+    /**
+     * 消费队列再平衡
+     * @param isOrder
+     */
     public void doRebalance(final boolean isOrder) {
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
         if (subTable != null) {

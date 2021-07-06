@@ -27,11 +27,16 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.common.message.MessageQueue;
 
+/**
+ * Broker端，消息队列再平衡锁管理器
+ */
 public class RebalanceLockManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.REBALANCE_LOCK_LOGGER_NAME);
+    //锁最大存活时间
     private final static long REBALANCE_LOCK_MAX_LIVE_TIME = Long.parseLong(System.getProperty(
         "rocketmq.broker.rebalance.lockMaxLiveTime", "60000"));
     private final Lock lock = new ReentrantLock();
+    //锁容器，以消息消费组分组，每个消息队列对应一个锁对象，表示当前该消息队列被消费组中哪个消费者所持有
     private final ConcurrentMap<String/* group */, ConcurrentHashMap<MessageQueue, LockEntry>> mqLockTable =
         new ConcurrentHashMap<String, ConcurrentHashMap<MessageQueue, LockEntry>>(1024);
 
@@ -114,6 +119,13 @@ public class RebalanceLockManager {
         return false;
     }
 
+    /**
+     * 消息消费队列集合加锁
+     * @param group 消费组名
+     * @param mqs 消息消费队列集合
+     * @param clientId 消息消费者
+     * @return 成功加锁的集合
+     */
     public Set<MessageQueue> tryLockBatch(final String group, final Set<MessageQueue> mqs,
         final String clientId) {
         Set<MessageQueue> lockedMqs = new HashSet<MessageQueue>(mqs.size());
@@ -189,6 +201,12 @@ public class RebalanceLockManager {
         return lockedMqs;
     }
 
+    /**
+     * 消息消费队列集合解锁
+     * @param group 消费组名
+     * @param mqs 消息消费队列集合
+     * @param clientId 消息消费者
+     */
     public void unlockBatch(final String group, final Set<MessageQueue> mqs, final String clientId) {
         try {
             this.lock.lockInterruptibly();
@@ -231,6 +249,9 @@ public class RebalanceLockManager {
         }
     }
 
+    /**
+     * 锁对象
+     */
     static class LockEntry {
         private String clientId;
         private volatile long lastUpdateTimestamp = System.currentTimeMillis();
@@ -251,11 +272,20 @@ public class RebalanceLockManager {
             this.lastUpdateTimestamp = lastUpdateTimestamp;
         }
 
+        /**
+         * 是否处于锁定状态
+         * @param clientId 客户端
+         * @return 是否锁定
+         */
         public boolean isLocked(final String clientId) {
             boolean eq = this.clientId.equals(clientId);
             return eq && !this.isExpired();
         }
 
+        /**
+         * 锁是否过期
+         * @return 是否过期
+         */
         public boolean isExpired() {
             boolean expired =
                 (System.currentTimeMillis() - this.lastUpdateTimestamp) > REBALANCE_LOCK_MAX_LIVE_TIME;

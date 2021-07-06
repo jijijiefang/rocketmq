@@ -1035,6 +1035,13 @@ public class MQClientInstance {
         return null;
     }
 
+    /**
+     * 查找Broker的地址
+     * @param brokerName broker名称
+     * @param brokerId 唯一序列号
+     * @param onlyThisBroker 只查询这个Broker
+     * @return 查询结果
+     */
     public FindBrokerResult findBrokerAddressInSubscribe(
         final String brokerName,
         final long brokerId,
