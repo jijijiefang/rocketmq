@@ -277,6 +277,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             }
         //顺序消费
         } else {
+            //需要锁定消息消费队列
             if (processQueue.isLocked()) {
                 if (!pullRequest.isLockedFirst()) {
                     final long offset = this.rebalanceImpl.computePullFromWhere(pullRequest.getMessageQueue());
@@ -292,6 +293,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     pullRequest.setNextOffset(offset);
                 }
             } else {
+                //延迟3S再消费
                 this.executePullRequestLater(pullRequest, pullTimeDelayMillsWhenException);
                 log.info("pull message later because not locked in broker, {}", pullRequest);
                 return;
@@ -1039,9 +1041,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         return subSet;
     }
 
+    /**
+     * 消费队列重平衡
+     */
     @Override
     public void doRebalance() {
         if (!this.pause) {
+            //根据顺序消费还是并发消费进行重平衡
             this.rebalanceImpl.doRebalance(this.isConsumeOrderly());
         }
     }

@@ -1165,6 +1165,16 @@ public class MQClientAPIImpl {
         throw new MQBrokerException(response.getCode(), response.getRemark(), addr);
     }
 
+    /**
+     * 向服务端批量锁定消费队列
+     * @param addr Broker地址
+     * @param requestBody 请求
+     * @param timeoutMillis 超时时间
+     * @return 锁定的消费队列
+     * @throws RemotingException 远程异常
+     * @throws MQBrokerException 服务端异常
+     * @throws InterruptedException 线程中断异常
+     */
     public Set<MessageQueue> lockBatchMQ(
         final String addr,
         final LockBatchRequestBody requestBody,
