@@ -932,7 +932,14 @@ public class CommitLog {
         }
     }
 
+    /**
+     * 提交复制请求
+     * @param result 追加消息结果
+     * @param messageExt 消息
+     * @return future
+     */
     public CompletableFuture<PutMessageStatus> submitReplicaRequest(AppendMessageResult result, MessageExt messageExt) {
+        //当前Broker是master
         if (BrokerRole.SYNC_MASTER == this.defaultMessageStore.getMessageStoreConfig().getBrokerRole()) {
             HAService service = this.defaultMessageStore.getHaService();
             if (messageExt.isWaitStoreMsgOK()) {

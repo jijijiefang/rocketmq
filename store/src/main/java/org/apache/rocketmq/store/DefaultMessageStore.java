@@ -941,6 +941,12 @@ public class DefaultMessageStore implements MessageStore {
         return this.commitLog.getData(offset);
     }
 
+    /**
+     * Slave追加消息至本地CommitLog
+     * @param startOffset starting offset.
+     * @param data data to append.
+     * @return boolean
+     */
     @Override
     public boolean appendToCommitLog(long startOffset, byte[] data) {
         if (this.shutdown) {
@@ -1029,6 +1035,10 @@ public class DefaultMessageStore implements MessageStore {
         return queryMessageResult;
     }
 
+    /**
+     * 当前Broker是Slave,更新master地址
+     * @param newAddr new address.
+     */
     @Override
     public void updateHaMasterAddress(String newAddr) {
         this.haService.updateMasterAddress(newAddr);
