@@ -51,6 +51,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentMap;
 
+/**
+ * 服务端向客户端
+ */
 public class Broker2Client {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;
@@ -59,6 +62,14 @@ public class Broker2Client {
         this.brokerController = brokerController;
     }
 
+    /**
+     * 服务端单向调用客户端发送事务回查请求
+     * @param group 消息生产组ID
+     * @param channel 通道
+     * @param requestHeader 请求头
+     * @param messageExt 消息
+     * @throws Exception 异常
+     */
     public void checkProducerTransactionState(
         final String group,
         final Channel channel,

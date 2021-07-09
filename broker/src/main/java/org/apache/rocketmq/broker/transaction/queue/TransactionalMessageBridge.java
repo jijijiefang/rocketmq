@@ -50,6 +50,9 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 事务消息桥接处理类
+ */
 public class TransactionalMessageBridge {
     private static final InternalLogger LOGGER = InnerLoggerFactory.getLogger(LoggerName.TRANSACTION_LOGGER_NAME);
 
@@ -72,6 +75,12 @@ public class TransactionalMessageBridge {
 
     }
 
+
+    /**
+     * 获取主题队列的最小偏移量
+     * @param mq 消息队列
+     * @return 偏移量
+     */
     public long fetchConsumeOffset(MessageQueue mq) {
         long offset = brokerController.getConsumerOffsetManager().queryOffset(TransactionalMessageUtil.buildConsumerGroup(),
             mq.getTopic(), mq.getQueueId());
@@ -81,6 +90,11 @@ public class TransactionalMessageBridge {
         return offset;
     }
 
+    /**
+     * 根据topic查询消息队列
+     * @param topic 主题
+     * @return 消息队列集合
+     */
     public Set<MessageQueue> fetchMessageQueues(String topic) {
         Set<MessageQueue> mqSet = new HashSet<>();
         TopicConfig topicConfig = selectTopicConfig(topic);
@@ -192,26 +206,49 @@ public class TransactionalMessageBridge {
         return foundList;
     }
 
+    /**
+     * 追加半消息至CommitLog
+     * @param messageInner 消息
+     * @return 追加消息结果
+     */
     public PutMessageResult putHalfMessage(MessageExtBrokerInner messageInner) {
         return store.putMessage(parseHalfMessageInner(messageInner));
     }
-
+    /**
+     * 异步追加半消息至CommitLog
+     * @param messageInner 消息
+     * @return 追加消息结果
+     */
     public CompletableFuture<PutMessageResult> asyncPutHalfMessage(MessageExtBrokerInner messageInner) {
         return store.asyncPutMessage(parseHalfMessageInner(messageInner));
     }
 
+    /**
+     * 解析半消息
+     * @param msgInner 消息
+     * @return 消息
+     */
     private MessageExtBrokerInner parseHalfMessageInner(MessageExtBrokerInner msgInner) {
+        //备份消息真实的topic
         MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_REAL_TOPIC, msgInner.getTopic());
+        //备份消息真实的消费队列ID
         MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_REAL_QUEUE_ID,
             String.valueOf(msgInner.getQueueId()));
         msgInner.setSysFlag(
             MessageSysFlag.resetTransactionValue(msgInner.getSysFlag(), MessageSysFlag.TRANSACTION_NOT_TYPE));
+        //RMQ_SYS_TRANS_HALF_TOPIC
         msgInner.setTopic(TransactionalMessageUtil.buildHalfTopic());
         msgInner.setQueueId(0);
         msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgInner.getProperties()));
         return msgInner;
     }
 
+    /**
+     * 处理Prepare消息
+     * @param messageExt 消息
+     * @param opType 删除标记
+     * @return boolean
+     */
     public boolean putOpMessage(MessageExt messageExt, String opType) {
         MessageQueue messageQueue = new MessageQueue(messageExt.getTopic(),
             this.brokerController.getBrokerConfig().getBrokerName(), messageExt.getQueueId());
@@ -272,6 +309,12 @@ public class TransactionalMessageBridge {
         return msgInner;
     }
 
+    /**
+     * 组装OP消息
+     * @param message 消息
+     * @param messageQueue 消费队列
+     * @return MessageExtBrokerInner
+     */
     private MessageExtBrokerInner makeOpMessageInner(Message message, MessageQueue messageQueue) {
         MessageExtBrokerInner msgInner = new MessageExtBrokerInner();
         msgInner.setTopic(message.getTopic());
@@ -314,6 +357,11 @@ public class TransactionalMessageBridge {
         return true;
     }
 
+    /**
+     * 写入OP消息至CommitLog
+     * @param message 消息
+     * @param mq 消费队列
+     */
     private void writeOp(Message message, MessageQueue mq) {
         MessageQueue opQueue;
         if (opQueueMap.containsKey(mq)) {

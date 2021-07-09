@@ -34,7 +34,7 @@ public interface TransactionalMessageService {
 
     /**
      * Process prepare message in async manner, we should put this message to storage service
-     *
+     * 以异步方式处理准备消息，我们应该将此消息放入存储服务
      * @param messageInner Prepare(Half) message.
      * @return CompletableFuture of put result, will be completed at put success(flush and replica done)
      */

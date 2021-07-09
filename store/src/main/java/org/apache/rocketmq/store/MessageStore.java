@@ -117,7 +117,7 @@ public interface MessageStore {
 
     /**
      * Get the minimum offset of the topic queue.
-     *
+     * 获取主题队列的最小偏移量
      * @param topic Topic name.
      * @param queueId Queue ID.
      * @return Minimum offset at present.
