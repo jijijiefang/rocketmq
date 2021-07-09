@@ -188,6 +188,12 @@ public class MappedFile extends ReferenceResource {
         return fileChannel;
     }
 
+    /**
+     * 追加消息
+     * @param msg 消息
+     * @param cb 回调方法
+     * @return 追加消息结果
+     */
     public AppendMessageResult appendMessage(final MessageExtBrokerInner msg, final AppendMessageCallback cb) {
         return appendMessagesInner(msg, cb);
     }
@@ -196,13 +202,20 @@ public class MappedFile extends ReferenceResource {
         return appendMessagesInner(messageExtBatch, cb);
     }
 
+    /**
+     * 追加消息
+     * @param messageExt 消息
+     * @param cb 回调
+     * @return 追加消息结果
+     */
     public AppendMessageResult appendMessagesInner(final MessageExt messageExt, final AppendMessageCallback cb) {
         assert messageExt != null;
         assert cb != null;
 
         int currentPos = this.wrotePosition.get();
-
+        //如果currentPos大于或等于文件大小说明文件已写满，抛出异常
         if (currentPos < this.fileSize) {
+            //通过slice()创建于MappedFile的共享内存区域，设置position为当前指针
             ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice();
             byteBuffer.position(currentPos);
             AppendMessageResult result;
@@ -213,6 +226,7 @@ public class MappedFile extends ReferenceResource {
             } else {
                 return new AppendMessageResult(AppendMessageStatus.UNKNOWN_ERROR);
             }
+            //更新消息队列写入偏移量
             this.wrotePosition.addAndGet(result.getWroteBytes());
             this.storeTimestamp = result.getStoreTimestamp();
             return result;
