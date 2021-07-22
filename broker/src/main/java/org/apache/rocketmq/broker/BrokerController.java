@@ -248,7 +248,9 @@ public class BrokerController {
                 this.messageStore =
                     new DefaultMessageStore(this.messageStoreConfig, this.brokerStatsManager, this.messageArrivingListener,
                         this.brokerConfig);
+                //是否启动Dledger
                 if (messageStoreConfig.isEnableDLegerCommitLog()) {
+                    //增加节点状态变更事件监听器
                     DLedgerRoleChangeHandler roleChangeHandler = new DLedgerRoleChangeHandler(this, (DefaultMessageStore) messageStore);
                     ((DLedgerCommitLog)((DefaultMessageStore) messageStore).getCommitLog()).getdLedgerServer().getdLedgerLeaderElector().addRoleChangeHandler(roleChangeHandler);
                 }
@@ -855,6 +857,10 @@ public class BrokerController {
         return this.brokerConfig.getBrokerIP1() + ":" + this.nettyServerConfig.getListenPort();
     }
 
+    /**
+     * Broker启动
+     * @throws Exception 异常
+     */
     public void start() throws Exception {
         if (this.messageStore != null) {
             this.messageStore.start();

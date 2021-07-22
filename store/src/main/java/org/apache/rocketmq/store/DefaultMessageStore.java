@@ -130,6 +130,7 @@ public class DefaultMessageStore implements MessageStore {
         this.messageStoreConfig = messageStoreConfig;
         this.brokerStatsManager = brokerStatsManager;
         this.allocateMappedFileService = new AllocateMappedFileService(this);
+        //是否开启Dledger
         if (messageStoreConfig.isEnableDLegerCommitLog()) {
             this.commitLog = new DLedgerCommitLog(this);
         } else {
@@ -196,7 +197,7 @@ public class DefaultMessageStore implements MessageStore {
                 result = result && this.scheduleMessageService.load();
             }
 
-            // load Commit Log
+            // load Commit Log 根据配置加载CommitLog或DLedgerCommitLog
             result = result && this.commitLog.load();
 
             // load Consume Queue
@@ -225,7 +226,8 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     /**
-     * @throws Exception
+     * 消息存储启动
+     * @throws Exception 异常
      */
     public void start() throws Exception {
 
@@ -1487,6 +1489,10 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    /**
+     * 回复消息消费队列
+     * @return 消费队列最大物理偏移量
+     */
     private long recoverConsumeQueue() {
         long maxPhysicOffset = -1;
         for (ConcurrentMap<Integer, ConsumeQueue> maps : this.consumeQueueTable.values()) {
