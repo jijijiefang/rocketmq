@@ -31,6 +31,9 @@ import org.apache.rocketmq.store.DefaultMessageStore;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.dledger.DLedgerCommitLog;
 
+/**
+ * Dledger角色变化处理器
+ */
 public class DLedgerRoleChangeHandler implements DLedgerLeaderElector.RoleChangeHandler {
 
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
@@ -54,7 +57,9 @@ public class DLedgerRoleChangeHandler implements DLedgerLeaderElector.RoleChange
                     boolean succ = true;
                     log.info("Begin handling broker role change term={} role={} currStoreRole={}", term, role, messageStore.getMessageStoreConfig().getBrokerRole());
                     switch (role) {
+                        //当前节点状态CANDIDATE，正在发起选举Leader节点
                         case CANDIDATE:
+                            //当前节点如果不是从节点，切换为从节点
                             if (messageStore.getMessageStoreConfig().getBrokerRole() != BrokerRole.SLAVE) {
                                 brokerController.changeToSlave(dLedgerCommitLog.getId());
                             }
@@ -62,16 +67,20 @@ public class DLedgerRoleChangeHandler implements DLedgerLeaderElector.RoleChange
                         case FOLLOWER:
                             brokerController.changeToSlave(dLedgerCommitLog.getId());
                             break;
+                        //选举成为Leader
                         case LEADER:
                             while (true) {
                                 if (!dLegerServer.getMemberState().isLeader()) {
                                     succ = false;
                                     break;
                                 }
+                                //表示当前节点还未又数据转发，直接跳出循环，无需等待
                                 if (dLegerServer.getdLedgerStore().getLedgerEndIndex() == -1) {
                                     break;
                                 }
+                                //则必须等待数据都已提交，即LedgerEndIndex与CommittedIndex 相等。
                                 if (dLegerServer.getdLedgerStore().getLedgerEndIndex() == dLegerServer.getdLedgerStore().getCommittedIndex()
+                                        //且需要等待CommitLog日志全部已转发到ConsumeQueue中
                                     && messageStore.dispatchBehindBytes() == 0) {
                                     break;
                                 }

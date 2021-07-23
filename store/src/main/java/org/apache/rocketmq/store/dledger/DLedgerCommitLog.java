@@ -904,13 +904,16 @@ public class DLedgerCommitLog extends CommitLog {
      */
     @Override
     public SelectMappedBufferResult getMessage(final long offset, final int size) {
+        //小于CommitLog最大偏移量，从CommitLog中查找
         if (offset < dividedCommitlogOffset) {
             return super.getMessage(offset, size);
         }
         int mappedFileSize = this.dLedgerServer.getdLedgerConfig().getMappedFileSizeForEntryData();
+        //根据偏移量寻找文件
         MmapFile mappedFile = this.dLedgerFileList.findMappedFileByOffset(offset, offset == 0);
         if (mappedFile != null) {
             int pos = (int) (offset % mappedFileSize);
+            //返回查找的消息
             return convertSbr(mappedFile.selectMappedBuffer(pos, size));
         }
         return null;

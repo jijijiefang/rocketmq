@@ -1144,12 +1144,20 @@ public class BrokerController {
         return accessValidatorMap;
     }
 
+    /**
+     * 从节点向主节点处理元数据同步
+     * @param role 节点角色
+     */
     private void handleSlaveSynchronize(BrokerRole role) {
+        //当前节点是从节点
         if (role == BrokerRole.SLAVE) {
+            //取消从节点同步Future
             if (null != slaveSyncFuture) {
                 slaveSyncFuture.cancel(false);
             }
+            //设置主节点地址为空
             this.slaveSynchronize.setMasterAddr(null);
+            //每隔10S，从节点同步一次元数据
             slaveSyncFuture = this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
                 @Override
                 public void run() {
@@ -1161,6 +1169,7 @@ public class BrokerController {
                     }
                 }
             }, 1000 * 3, 1000 * 10, TimeUnit.MILLISECONDS);
+        //如果当前节点是主节点
         } else {
             //handle the slave synchronise
             if (null != slaveSyncFuture) {
@@ -1170,15 +1179,21 @@ public class BrokerController {
         }
     }
 
+    /**
+     * 切换为从节点
+     * @param brokerId brokerId
+     */
     public void changeToSlave(int brokerId) {
         log.info("Begin to change to slave brokerName={} brokerId={}", brokerConfig.getBrokerName(), brokerId);
 
-        //change the role
+        //change the role 设置brokerId,如果是0就设置为1
         brokerConfig.setBrokerId(brokerId == 0 ? 1 : brokerId); //TO DO check
+        //设置节点角色
         messageStoreConfig.setBrokerRole(BrokerRole.SLAVE);
 
         //handle the scheduled service
         try {
+            //关闭延迟消息定时调度线程
             this.messageStore.handleScheduleMessageService(BrokerRole.SLAVE);
         } catch (Throwable t) {
             log.error("[MONITOR] handleScheduleMessageService failed when changing to slave", t);
@@ -1186,15 +1201,17 @@ public class BrokerController {
 
         //handle the transactional service
         try {
+            //关闭事务消息状态回查处理器
             this.shutdownProcessorByHa();
         } catch (Throwable t) {
             log.error("[MONITOR] shutdownProcessorByHa failed when changing to slave", t);
         }
 
-        //handle the slave synchronise
+        //handle the slave synchronise 从节点启动元数据同步处理器
         handleSlaveSynchronize(BrokerRole.SLAVE);
 
         try {
+            //向集群内所有的nameserver告知broker信息状态的变更
             this.registerBrokerAll(true, true, brokerConfig.isForceRegister());
         } catch (Throwable ignored) {
 
@@ -1203,18 +1220,22 @@ public class BrokerController {
     }
 
 
-
+    /**
+     * 切换为主节点
+     * @param role 角色
+     */
     public void changeToMaster(BrokerRole role) {
         if (role == BrokerRole.SLAVE) {
             return;
         }
         log.info("Begin to change to master brokerName={}", brokerConfig.getBrokerName());
 
-        //handle the slave synchronise
+        //handle the slave synchronise 关闭元数据同步器，因为主节点无需同步
         handleSlaveSynchronize(role);
 
         //handle the scheduled service
         try {
+            //开启定时任务处理线程
             this.messageStore.handleScheduleMessageService(role);
         } catch (Throwable t) {
             log.error("[MONITOR] handleScheduleMessageService failed when changing to master", t);
@@ -1222,16 +1243,19 @@ public class BrokerController {
 
         //handle the transactional service
         try {
+            //开启事务状态回查处理线程
             this.startProcessorByHa(BrokerRole.SYNC_MASTER);
         } catch (Throwable t) {
             log.error("[MONITOR] startProcessorByHa failed when changing to master", t);
         }
 
         //if the operations above are totally successful, we change to master
+        //设置brokerId和brokerRole
         brokerConfig.setBrokerId(0); //TO DO check
         messageStoreConfig.setBrokerRole(role);
 
         try {
+            //向nameserver立即发送心跳包以便告知broker 服务器当前最新的状态
             this.registerBrokerAll(true, true, brokerConfig.isForceRegister());
         } catch (Throwable ignored) {
 
@@ -1239,6 +1263,10 @@ public class BrokerController {
         log.info("Finish to change to master brokerName={}", brokerConfig.getBrokerName());
     }
 
+    /**
+     * 如果是主节点开启事务消息回查线程
+     * @param role 节点角色
+     */
     private void startProcessorByHa(BrokerRole role) {
         if (BrokerRole.SLAVE != role) {
             if (this.transactionalMessageCheckService != null) {
@@ -1247,6 +1275,9 @@ public class BrokerController {
         }
     }
 
+    /**
+     * 关闭事务状态回查处理器，当节点从主节点变更为从节点后，该方法被调用
+     */
     private void shutdownProcessorByHa() {
         if (this.transactionalMessageCheckService != null) {
             this.transactionalMessageCheckService.shutdown(true);

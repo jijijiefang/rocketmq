@@ -1569,6 +1569,10 @@ public class DefaultMessageStore implements MessageStore {
         return brokerStatsManager;
     }
 
+    /**
+     * 根据Broker角色开启或关闭延迟消息定时调度线程
+     * @param brokerRole 角色
+     */
     @Override
     public void handleScheduleMessageService(final BrokerRole brokerRole) {
         if (this.scheduleMessageService != null) {
