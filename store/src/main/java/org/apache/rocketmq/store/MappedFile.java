@@ -144,6 +144,13 @@ public class MappedFile extends ReferenceResource {
         return TOTAL_MAPPED_VIRTUAL_MEMORY.get();
     }
 
+    /**
+     * 使用直接内存池内存方式初始化
+     * @param fileName 映射文件
+     * @param fileSize 文件大小
+     * @param transientStorePool 直接内存池
+     * @throws IOException IO异常
+     */
     public void init(final String fileName, final int fileSize,
         final TransientStorePool transientStorePool) throws IOException {
         init(fileName, fileSize);
@@ -162,6 +169,7 @@ public class MappedFile extends ReferenceResource {
 
         try {
             this.fileChannel = new RandomAccessFile(this.file, "rw").getChannel();
+            //文件映射内存
             this.mappedByteBuffer = this.fileChannel.map(MapMode.READ_WRITE, 0, fileSize);
             TOTAL_MAPPED_VIRTUAL_MEMORY.addAndGet(fileSize);
             TOTAL_MAPPED_FILES.incrementAndGet();
@@ -283,6 +291,7 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
+     * 刷写数据到硬盘
      * @return The current flushed position
      */
     public int flush(final int flushLeastPages) {
@@ -291,10 +300,12 @@ public class MappedFile extends ReferenceResource {
                 int value = getReadPosition();
 
                 try {
-                    //We only append data to fileChannel or mappedByteBuffer, never both.
+                    //We only append data to fileChannel or mappedByteBuffer, never both. 我们只将数据附加到fileChannel或mappedByteBuffer，而不是两者
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
+                        //文件通道刷盘
                         this.fileChannel.force(false);
                     } else {
+                        //文件映射内存直接刷盘
                         this.mappedByteBuffer.force();
                     }
                 } catch (Throwable e) {
@@ -334,6 +345,10 @@ public class MappedFile extends ReferenceResource {
         return this.committedPosition.get();
     }
 
+    /**
+     * 提交
+     * @param commitLeastPages 0
+     */
     protected void commit0(final int commitLeastPages) {
         int writePos = this.wrotePosition.get();
         int lastCommittedPosition = this.committedPosition.get();

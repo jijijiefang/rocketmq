@@ -1867,6 +1867,9 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    /**
+     * 消费队列刷盘线程
+     */
     class FlushConsumeQueueService extends ServiceThread {
         private static final int RETRY_TIMES_OVER = 3;
         private long lastFlushTimestamp = 0;

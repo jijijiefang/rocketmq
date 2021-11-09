@@ -28,6 +28,9 @@ import org.apache.rocketmq.store.config.MessageStoreConfig;
 import org.apache.rocketmq.store.util.LibC;
 import sun.nio.ch.DirectBuffer;
 
+/**
+ * 直接内存池
+ */
 public class TransientStorePool {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
@@ -45,6 +48,7 @@ public class TransientStorePool {
 
     /**
      * It's a heavy init method.
+     * 初始化直接内存池
      */
     public void init() {
         for (int i = 0; i < poolSize; i++) {
@@ -58,6 +62,9 @@ public class TransientStorePool {
         }
     }
 
+    /**
+     * 销毁直接内存池
+     */
     public void destroy() {
         for (ByteBuffer byteBuffer : availableBuffers) {
             final long address = ((DirectBuffer) byteBuffer).address();
@@ -66,12 +73,20 @@ public class TransientStorePool {
         }
     }
 
+    /**
+     * 返还内存池中的内存
+     * @param byteBuffer
+     */
     public void returnBuffer(ByteBuffer byteBuffer) {
         byteBuffer.position(0);
         byteBuffer.limit(fileSize);
         this.availableBuffers.offerFirst(byteBuffer);
     }
 
+    /**
+     * 使用内存池中的内存
+     * @return
+     */
     public ByteBuffer borrowBuffer() {
         ByteBuffer buffer = availableBuffers.pollFirst();
         if (availableBuffers.size() < poolSize * 0.4) {
@@ -80,6 +95,10 @@ public class TransientStorePool {
         return buffer;
     }
 
+    /**
+     * 内存池中可用直接内存数量
+     * @return
+     */
     public int availableBufferNums() {
         if (storeConfig.isTransientStorePoolEnable()) {
             return availableBuffers.size();
