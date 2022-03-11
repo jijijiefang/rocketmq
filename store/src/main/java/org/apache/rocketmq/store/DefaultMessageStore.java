@@ -88,7 +88,7 @@ public class DefaultMessageStore implements MessageStore {
     private final ReputMessageService reputMessageService;
     //存储HA机制
     private final HAService haService;
-
+    //周期定时任务消息处理线程
     private final ScheduleMessageService scheduleMessageService;
 
     private final StoreStatsService storeStatsService;
@@ -111,7 +111,7 @@ public class DefaultMessageStore implements MessageStore {
     private StoreCheckpoint storeCheckpoint;
 
     private AtomicLong printTimes = new AtomicLong(0);
-    //CommitLog 文件转发请求
+    //CommitLog 文件转发请求调度器集合
     private final LinkedList<CommitLogDispatcher> dispatcherList;
 
     private RandomAccessFile lockFile;
@@ -137,7 +137,7 @@ public class DefaultMessageStore implements MessageStore {
             this.commitLog = new CommitLog(this);
         }
         this.consumeQueueTable = new ConcurrentHashMap<>(32);
-
+        //消费队列刷盘线程
         this.flushConsumeQueueService = new FlushConsumeQueueService();
         this.cleanCommitLogService = new CleanCommitLogService();
         this.cleanConsumeQueueService = new CleanConsumeQueueService();
@@ -163,7 +163,9 @@ public class DefaultMessageStore implements MessageStore {
         this.indexService.start();
 
         this.dispatcherList = new LinkedList<>();
+        //日志构建消费队列调度程序
         this.dispatcherList.addLast(new CommitLogDispatcherBuildConsumeQueue());
+        //日志构建索引调度程序
         this.dispatcherList.addLast(new CommitLogDispatcherBuildIndex());
 
         File file = new File(StorePathConfigHelper.getLockFile(messageStoreConfig.getStorePathRootDir()));
@@ -1553,13 +1555,22 @@ public class DefaultMessageStore implements MessageStore {
         return runningFlags;
     }
 
+    /**
+     * 使用调度器分发到消费队列和索引文件
+     * @param req
+     */
     public void doDispatch(DispatchRequest req) {
         for (CommitLogDispatcher dispatcher : this.dispatcherList) {
             dispatcher.dispatch(req);
         }
     }
 
+    /**
+     * 构建消费队列
+     * @param dispatchRequest
+     */
     public void putMessagePositionInfo(DispatchRequest dispatchRequest) {
+        //通过主题和队列查找消费队列
         ConsumeQueue cq = this.findConsumeQueue(dispatchRequest.getTopic(), dispatchRequest.getQueueId());
         cq.putMessagePositionInfoWrapper(dispatchRequest);
     }
@@ -1617,6 +1628,9 @@ public class DefaultMessageStore implements MessageStore {
         }, 6, TimeUnit.SECONDS);
     }
 
+    /**
+     * 消息日志转发构建消费队列
+     */
     class CommitLogDispatcherBuildConsumeQueue implements CommitLogDispatcher {
 
         @Override
@@ -1634,6 +1648,9 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    /**
+     * 消息分发索引构建程序
+     */
     class CommitLogDispatcherBuildIndex implements CommitLogDispatcher {
 
         @Override
@@ -2004,6 +2021,7 @@ public class DefaultMessageStore implements MessageStore {
 
                             if (dispatchRequest.isSuccess()) {
                                 if (size > 0) {
+                                    //进行请求转发
                                     DefaultMessageStore.this.doDispatch(dispatchRequest);
                                     //当新消息到达commitLog，ReputMessageService线程负责转发消息到ConsumeQueue、IndexFile,如果Broker开启了长轮询
                                     //并且当前Broker是主节点，调用pullRequestHoldService线程的notifyMessageArriving唤醒挂起线程。

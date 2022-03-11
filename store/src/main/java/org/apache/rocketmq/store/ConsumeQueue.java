@@ -28,6 +28,7 @@ import org.apache.rocketmq.store.config.StorePathConfigHelper;
 public class ConsumeQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
+    //每个条目长度20，分别为8字节的CommitLog物理偏移量、4字节的消息长度、8字节tag哈希码
     public static final int CQ_STORE_UNIT_SIZE = 20;
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
@@ -381,6 +382,10 @@ public class ConsumeQueue {
         return this.minLogicOffset / CQ_STORE_UNIT_SIZE;
     }
 
+    /**
+     *
+     * @param request
+     */
     public void putMessagePositionInfoWrapper(DispatchRequest request) {
         final int maxRetries = 30;
         boolean canWrite = this.defaultMessageStore.getRunningFlags().isCQWriteable();
@@ -400,6 +405,7 @@ public class ConsumeQueue {
                         topic, queueId, request.getCommitLogOffset());
                 }
             }
+            //放置消息位置信息
             boolean result = this.putMessagePositionInfo(request.getCommitLogOffset(),
                 request.getMsgSize(), tagsCode, request.getConsumeQueueOffset());
             if (result) {
@@ -427,6 +433,14 @@ public class ConsumeQueue {
         this.defaultMessageStore.getRunningFlags().makeLogicsQueueError();
     }
 
+    /**
+     * 放置消息位置信息
+     * @param offset
+     * @param size
+     * @param tagsCode
+     * @param cqOffset
+     * @return
+     */
     private boolean putMessagePositionInfo(final long offset, final int size, final long tagsCode,
         final long cqOffset) {
 
@@ -437,10 +451,13 @@ public class ConsumeQueue {
 
         this.byteBufferIndex.flip();
         this.byteBufferIndex.limit(CQ_STORE_UNIT_SIZE);
+        //8字节的CommitLog物理偏移量
         this.byteBufferIndex.putLong(offset);
+        //4字节的消息长度
         this.byteBufferIndex.putInt(size);
+        //8字节tag哈希码
         this.byteBufferIndex.putLong(tagsCode);
-
+        //消费队列条目偏移量*20，得到物理偏移量
         final long expectLogicOffset = cqOffset * CQ_STORE_UNIT_SIZE;
 
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile(expectLogicOffset);
@@ -476,6 +493,9 @@ public class ConsumeQueue {
                 }
             }
             this.maxPhysicOffset = offset + size;
+            //将消息偏移量、消息长度、tag hash code 写入到ByteBuffer中
+            //根据consumeQueueOffset 计算ConumeQueue 中的物理地址，将内容追加到ConsumeQueue的内存映射文件中
+            //ConumeQueue的刷盘方式固定为异步刷盘模式
             return mappedFile.appendMessage(this.byteBufferIndex.array());
         }
         return false;

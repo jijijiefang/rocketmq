@@ -56,14 +56,15 @@ public class CommitLog {
     protected final static int BLANK_MAGIC_CODE = -875286124;
     protected final MappedFileQueue mappedFileQueue;
     protected final DefaultMessageStore defaultMessageStore;
-    //
+    //刷盘线程
     private final FlushCommitLogService flushCommitLogService;
 
     //If TransientStorePool enabled, we must flush message to FileChannel at fixed periods 若启用了TransientStorePool，则必须在固定时间段将消息刷新到FileChannel
     private final FlushCommitLogService commitLogService;
-
+    //追加消息回调
     private final AppendMessageCallback appendMessageCallback;
     private final ThreadLocal<MessageExtBatchEncoder> batchEncoderThreadLocal;
+    //主题消费队列:偏移量
     protected HashMap<String/* topic-queueid */, Long/* offset */> topicQueueTable = new HashMap<String, Long>(1024);
     protected volatile long confirmOffset = -1L;
 
@@ -146,6 +147,7 @@ public class CommitLog {
 
     /**
      * Read CommitLog data, use data replication
+     * 读取CommitLog数据，使用数据复制
      */
     public SelectMappedBufferResult getData(final long offset) {
         return this.getData(offset, offset == 0);
@@ -241,7 +243,7 @@ public class CommitLog {
 
     /**
      * check the message and returns the message size
-     *
+     * 检查消息并返回消息大小
      * @return 0 Come the end of the file // >0 Normal messages // -1 Message checksum failure
      */
     public DispatchRequest checkMessageAndReturnSize(java.nio.ByteBuffer byteBuffer, final boolean checkCRC,
@@ -684,6 +686,11 @@ public class CommitLog {
         });
     }
 
+    /**
+     * 异步保存批量消息
+     * @param messageExtBatch
+     * @return
+     */
     public CompletableFuture<PutMessageResult> asyncPutMessages(final MessageExtBatch messageExtBatch) {
         messageExtBatch.setStoreTimestamp(System.currentTimeMillis());
         AppendMessageResult result;
@@ -791,7 +798,7 @@ public class CommitLog {
     }
 
     /**
-     * 保存消息至CommitLog
+     * 同步保存消息至CommitLog
      * @param msg 消息
      * @return 保存消息结果
      */
@@ -810,6 +817,7 @@ public class CommitLog {
         int queueId = msg.getQueueId();
 
         final int tranType = MessageSysFlag.getTransactionValue(msg.getSysFlag());
+        //不是事务消息或是事务消息里的commit
         if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE
             || tranType == MessageSysFlag.TRANSACTION_COMMIT_TYPE) {
             // Delay Delivery 延迟消息处理
@@ -847,7 +855,7 @@ public class CommitLog {
         //获取当前可以写入的CommitLog文件
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
         //默认使用自旋锁实现
-        putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
+        putMessageLock.lock(); //spin or ReentrantLock ,depending on store config 自旋锁或可重入锁，具体取决于存储配置
         try {
             long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
             this.beginTimeInLock = beginLockTimestamp;
@@ -934,6 +942,7 @@ public class CommitLog {
         // Synchronization flush 同步刷盘
         if (FlushDiskType.SYNC_FLUSH == this.defaultMessageStore.getMessageStoreConfig().getFlushDiskType()) {
             final GroupCommitService service = (GroupCommitService) this.flushCommitLogService;
+            //消息是否设置等于持久化消息成功再返回
             if (messageExt.isWaitStoreMsgOK()) {
                 GroupCommitRequest request = new GroupCommitRequest(result.getWroteOffset() + result.getWroteBytes(),
                         this.defaultMessageStore.getMessageStoreConfig().getSyncFlushTimeout());
@@ -990,7 +999,7 @@ public class CommitLog {
      * @param messageExt 消息
      */
     public void handleDiskFlush(AppendMessageResult result, PutMessageResult putMessageResult, MessageExt messageExt) {
-        // Synchronization flush
+        // Synchronization flush 同步刷盘
         if (FlushDiskType.SYNC_FLUSH == this.defaultMessageStore.getMessageStoreConfig().getFlushDiskType()) {
             final GroupCommitService service = (GroupCommitService) this.flushCommitLogService;
             if (messageExt.isWaitStoreMsgOK()) {
@@ -1013,7 +1022,7 @@ public class CommitLog {
                 service.wakeup();
             }
         }
-        // Asynchronous flush
+        // Asynchronous flush 异步刷盘
         else {
             if (!this.defaultMessageStore.getMessageStoreConfig().isTransientStorePoolEnable()) {
                 flushCommitLogService.wakeup();
@@ -1561,8 +1570,11 @@ public class CommitLog {
         }
     }
 
+    /**
+     * 默认追加消息回调类
+     */
     class DefaultAppendMessageCallback implements AppendMessageCallback {
-        // File at the end of the minimum fixed length empty
+        // File at the end of the minimum fixed length empty 结束文件最小空白长度
         private static final int END_FILE_MIN_BLANK_LENGTH = 4 + 4;
         private final ByteBuffer msgIdMemory;
         private final ByteBuffer msgIdV6Memory;
@@ -1598,7 +1610,7 @@ public class CommitLog {
             final MessageExtBrokerInner msgInner) {
             // STORETIMESTAMP + STOREHOSTADDRESS + OFFSET <br>
 
-            // PHY OFFSET
+            // PHY OFFSET 物理偏移量
             long wroteOffset = fileFromOffset + byteBuffer.position();
 
             int sysflag = msgInner.getSysFlag();
@@ -1649,6 +1661,7 @@ public class CommitLog {
 
             /**
              * Serialize message
+             * 序列化消息
              */
             final byte[] propertiesData =
                 msgInner.getPropertiesString() == null ? null : msgInner.getPropertiesString().getBytes(MessageDecoder.CHARSET_UTF8);
@@ -1736,7 +1749,7 @@ public class CommitLog {
                 this.msgStoreItemMemory.put(propertiesData);
 
             final long beginTimeMills = CommitLog.this.defaultMessageStore.now();
-            // Write messages to the queue buffer
+            // Write messages to the queue buffer 将消息写入队列缓冲区
             byteBuffer.put(this.msgStoreItemMemory.array(), 0, msgLen);
             //创建AppendMessageResult，只是将消息存储在MappedFile对应的内存映射中，还没有刷盘
             AppendMessageResult result = new AppendMessageResult(AppendMessageStatus.PUT_OK, wroteOffset, msgLen, msgId,
@@ -1757,6 +1770,14 @@ public class CommitLog {
             return result;
         }
 
+        /**
+         * 批量追加消息
+         * @param fileFromOffset
+         * @param byteBuffer
+         * @param maxBlank
+         * @param messageExtBatch, backed up by a byte array
+         * @return
+         */
         public AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer, final int maxBlank,
             final MessageExtBatch messageExtBatch) {
             byteBuffer.mark();

@@ -194,6 +194,12 @@ public class MappedFileQueue {
         return 0;
     }
 
+    /**
+     * 创建新的MappedFile
+     * @param startOffset
+     * @param needCreate
+     * @return
+     */
     public MappedFile getLastMappedFile(final long startOffset, boolean needCreate) {
         long createOffset = -1;
         MappedFile mappedFileLast = getLastMappedFile();
@@ -203,6 +209,7 @@ public class MappedFileQueue {
         }
 
         if (mappedFileLast != null && mappedFileLast.isFull()) {
+            //最新的文件偏移量+1G作为新文件的起始偏移量
             createOffset = mappedFileLast.getFileFromOffset() + this.mappedFileSize;
         }
 
@@ -227,6 +234,7 @@ public class MappedFileQueue {
                 if (this.mappedFiles.isEmpty()) {
                     mappedFile.setFirstCreateInQueue(true);
                 }
+                //放入mappedFiles
                 this.mappedFiles.add(mappedFile);
             }
 
@@ -240,6 +248,10 @@ public class MappedFileQueue {
         return getLastMappedFile(startOffset, true);
     }
 
+    /**
+     * 获取最新的MappedFile
+     * @return
+     */
     public MappedFile getLastMappedFile() {
         MappedFile mappedFileLast = null;
 
