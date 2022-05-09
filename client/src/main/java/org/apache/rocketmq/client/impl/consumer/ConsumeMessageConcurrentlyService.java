@@ -321,7 +321,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                     MessageExt msg = consumeRequest.getMsgs().get(i);
                     //发送消息到Broker,Broker收到消息放入重试队列，然后进行重试消费
                     boolean result = this.sendMessageBack(msg, context);
-                    //发小延迟消息失败延迟5S消费
+                    //延迟消息失败延迟5S消费
                     if (!result) {
                         //消费次数+1
                         msg.setReconsumeTimes(msg.getReconsumeTimes() + 1);
@@ -338,9 +338,10 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
             default:
                 break;
         }
-
+        //获取此批消息的最小偏移量
         long offset = consumeRequest.getProcessQueue().removeMessage(consumeRequest.getMsgs());
         if (offset >= 0 && !consumeRequest.getProcessQueue().isDropped()) {
+            //更新消费偏移量为此批消息的最小偏移量
             this.defaultMQPushConsumerImpl.getOffsetStore().updateOffset(consumeRequest.getMessageQueue(), offset, true);
         }
     }

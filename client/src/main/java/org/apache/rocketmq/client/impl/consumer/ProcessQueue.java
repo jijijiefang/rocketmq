@@ -47,7 +47,7 @@ public class ProcessQueue {
     private final InternalLogger log = ClientLogger.getLog();
     //读写锁，控制并发修改msgTreeMap
     private final ReadWriteLock lockTreeMap = new ReentrantReadWriteLock();
-    //消息存储容器
+    //消息存储容器，Key是消息偏移量，Value是消息
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
     //消息总数
     private final AtomicLong msgCount = new AtomicLong();
@@ -212,7 +212,7 @@ public class ProcessQueue {
     /**
      * 移除消息
      * @param msgs 消息
-     * @return long
+     * @return long 这批消息的最小偏移量
      */
     public long removeMessage(final List<MessageExt> msgs) {
         long result = -1;
@@ -234,6 +234,7 @@ public class ProcessQueue {
                     msgCount.addAndGet(removedCnt);
 
                     if (!msgTreeMap.isEmpty()) {
+                        //返回这批消息的最小偏移量
                         result = msgTreeMap.firstKey();
                     }
                 }

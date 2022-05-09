@@ -66,6 +66,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Internal implementation. Most of the functions herein are delegated to it.
+     * 内部执行。本文中的大部分功能都委托给它
      */
     protected final transient DefaultMQPushConsumerImpl defaultMQPushConsumerImpl;
 
