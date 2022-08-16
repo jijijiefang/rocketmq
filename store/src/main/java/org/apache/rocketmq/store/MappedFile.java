@@ -534,6 +534,8 @@ public class MappedFile extends ReferenceResource {
                 log.info("j={}, costTime={}", j, System.currentTimeMillis() - time);
                 time = System.currentTimeMillis();
                 try {
+                     //Thread中sleep函数的作用是让该线程进入休眠状态，让出cpu的执行时间给其他进程，该线程休眠后进入就绪队列和其他线程一起竞争cpu的执行时间。
+                    //所以sleep(0)的作用就是让该线程立即从运行阶段进入就绪队列而非等待队列，释放cpu时间，可以让操作系统切换其他线程来执行，提升效率。
                     Thread.sleep(0);
                 } catch (InterruptedException e) {
                     log.error("Interrupted", e);
