@@ -29,10 +29,11 @@ import org.apache.rocketmq.logging.InternalLogger;
 /**
  * An allocate strategy proxy for based on machine room nearside priority. An actual allocate strategy can be
  * specified.
- *
+ * 基于机房近侧优先级的分配策略代理。可以指定实际的分配策略。
  * If any consumer is alive in a machine room, the message queue of the broker which is deployed in the same machine
  * should only be allocated to those. Otherwise, those message queues can be shared along all consumers since there are
  * no alive consumer to monopolize them.
+ * 如果有任何消费者在机房中活着，部署在同一台机器上的broker的消息队列应该只分配给那些。否则，这些消息队列可以与所有消费者共享，因为没有活着的消费者来垄断它们。
  */
 public class AllocateMachineRoomNearby implements AllocateMessageQueueStrategy {
     private final InternalLogger log = ClientLogger.getLog();

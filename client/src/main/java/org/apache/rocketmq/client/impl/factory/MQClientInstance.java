@@ -1087,6 +1087,12 @@ public class MQClientInstance {
         return 0;
     }
 
+    /**
+     * 从Broker获取消费组内的消费者Id列表
+     * @param topic
+     * @param group
+     * @return
+     */
     public List<String> findConsumerIdList(final String topic, final String group) {
         String brokerAddr = this.findBrokerAddrByTopic(topic);
         if (null == brokerAddr) {
@@ -1096,6 +1102,7 @@ public class MQClientInstance {
 
         if (null != brokerAddr) {
             try {
+                //从Broker获取消费组内消费者列表
                 return this.mQClientAPIImpl.getConsumerIdListByGroup(brokerAddr, group, 3000);
             } catch (Exception e) {
                 log.warn("getConsumerIdListByGroup exception, " + brokerAddr + " " + group, e);
