@@ -81,17 +81,19 @@ public class NamesrvController {
 
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
-
+        //注册Server端Netty处理器
         this.registerProcessor();
-
+        //NameServer 每隔1Os扫描一次Broker，移除处于不激活状态的Broker
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
             public void run() {
+                //扫描激活的Broker列表，移除过时的Broker（120秒）
                 NamesrvController.this.routeInfoManager.scanNotActiveBroker();
             }
         }, 5, 10, TimeUnit.SECONDS);
 
+        //nameServer 每隔10分钟打印一次KV 配置
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override

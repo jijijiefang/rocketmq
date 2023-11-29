@@ -47,12 +47,18 @@ import org.apache.rocketmq.remoting.common.RemotingUtil;
 
 public class RouteInfoManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
+    //Broker通道过期时间
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    //Topic 消息队列路由信息，消息发送时根据路由表进行负载均衡。
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
+    //Broker 基础信息， 包含brokerName 、所属集群名称、主备Broker地址。
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
+    //Broker 集群信息，存储集群中所有Broker名称
     private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
+    //Broker 状态信息。NameServer 每次收到心跳包时会替换该信息
     private final HashMap<String/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;
+    //Broker 上的FilterServer 列表，用于类模式消息过滤
     private final HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
     public RouteInfoManager() {
@@ -99,6 +105,18 @@ public class RouteInfoManager {
         return topicList.encode();
     }
 
+    /**
+     * Broker注册到NameServer
+     * @param clusterName 集群名称
+     * @param brokerAddr Broker地址
+     * @param brokerName Broker名称
+     * @param brokerId Broker主键
+     * @param haServerAddr 高可用BrokerServer地址
+     * @param topicConfigWrapper 主题配置
+     * @param filterServerList 过滤列表
+     * @param channel Socket通道
+     * @return 注册结果
+     */
     public RegisterBrokerResult registerBroker(
         final String clusterName,
         final String brokerAddr,
@@ -426,6 +444,9 @@ public class RouteInfoManager {
         return null;
     }
 
+    /**
+     * 扫描激活的Broker列表，移除过时的（120秒）
+     */
     public void scanNotActiveBroker() {
         Iterator<Entry<String, BrokerLiveInfo>> it = this.brokerLiveTable.entrySet().iterator();
         while (it.hasNext()) {
