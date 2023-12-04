@@ -88,23 +88,32 @@ import org.apache.rocketmq.remoting.protocol.RemotingCommand;
  * MQ客户端实例，同一个JVM中，所有消费者和生产者使用同一个MQClientInstance，且只会启动一次
  */
 public class MQClientInstance {
+    //锁超时时间
     private final static long LOCK_TIMEOUT_MILLIS = 3000;
     private final InternalLogger log = ClientLogger.getLog();
+    //客户端配置
     private final ClientConfig clientConfig;
     private final int instanceIndex;
     private final String clientId;
     private final long bootTimestamp = System.currentTimeMillis();
+    //生产者列表
     private final ConcurrentMap<String/* group */, MQProducerInner> producerTable = new ConcurrentHashMap<String, MQProducerInner>();
+    //消费者组列表
     private final ConcurrentMap<String/* group */, MQConsumerInner> consumerTable = new ConcurrentHashMap<String, MQConsumerInner>();
     private final ConcurrentMap<String/* group */, MQAdminExtInner> adminExtTable = new ConcurrentHashMap<String, MQAdminExtInner>();
+    //Netty客户端配置
     private final NettyClientConfig nettyClientConfig;
+    //客户端API实现
     private final MQClientAPIImpl mQClientAPIImpl;
     private final MQAdminImpl mQAdminImpl;
+    //主题路由信息
     private final ConcurrentMap<String/* Topic */, TopicRouteData> topicRouteTable = new ConcurrentHashMap<String, TopicRouteData>();
     private final Lock lockNamesrv = new ReentrantLock();
     private final Lock lockHeartbeat = new ReentrantLock();
+    //Broker地址信息
     private final ConcurrentMap<String/* Broker Name */, HashMap<Long/* brokerId */, String/* address */>> brokerAddrTable =
         new ConcurrentHashMap<String, HashMap<Long, String>>();
+    //Broker版本信息
     private final ConcurrentMap<String/* Broker Name */, HashMap<String/* address */, Integer>> brokerVersionTable =
         new ConcurrentHashMap<String, HashMap<String, Integer>>();
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
@@ -114,7 +123,9 @@ public class MQClientInstance {
         }
     });
     private final ClientRemotingProcessor clientRemotingProcessor;
+    //拉取消息服务
     private final PullMessageService pullMessageService;
+    //重平衡服务
     private final RebalanceService rebalanceService;
     private final DefaultMQProducer defaultMQProducer;
     private final ConsumerStatsManager consumerStatsManager;
@@ -266,6 +277,7 @@ public class MQClientInstance {
                 @Override
                 public void run() {
                     try {
+                        //获取NameServer地址
                         MQClientInstance.this.mQClientAPIImpl.fetchNameServerAddr();
                     } catch (Exception e) {
                         log.error("ScheduledTask fetchNameServerAddr exception", e);
@@ -279,6 +291,7 @@ public class MQClientInstance {
             @Override
             public void run() {
                 try {
+                    //每30S从NameServer获取主题路由信息进行更新
                     MQClientInstance.this.updateTopicRouteInfoFromNameServer();
                 } catch (Exception e) {
                     log.error("ScheduledTask updateTopicRouteInfoFromNameServer exception", e);
@@ -291,7 +304,9 @@ public class MQClientInstance {
             @Override
             public void run() {
                 try {
+                    //清除下线的Broker
                     MQClientInstance.this.cleanOfflineBroker();
+                    //向所有Broker发送心跳
                     MQClientInstance.this.sendHeartbeatToAllBrokerWithLock();
                 } catch (Exception e) {
                     log.error("ScheduledTask sendHeartbeatToAllBroker exception", e);
@@ -304,6 +319,7 @@ public class MQClientInstance {
             @Override
             public void run() {
                 try {
+                    //持久化所有消费者的偏移量
                     MQClientInstance.this.persistAllConsumerOffset();
                 } catch (Exception e) {
                     log.error("ScheduledTask persistAllConsumerOffset exception", e);
@@ -316,6 +332,7 @@ public class MQClientInstance {
             @Override
             public void run() {
                 try {
+                    //调整线程池
                     MQClientInstance.this.adjustThreadPool();
                 } catch (Exception e) {
                     log.error("ScheduledTask adjustThreadPool exception", e);
@@ -328,6 +345,9 @@ public class MQClientInstance {
         return clientId;
     }
 
+    /**
+     * 从NameServer获取并更新主题路由信息
+     */
     public void updateTopicRouteInfoFromNameServer() {
         Set<String> topicList = new HashSet<String>();
 
@@ -609,6 +629,13 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 更新主题路由信息从NameServer获取
+     * @param topic 主题
+     * @param isDefault 是否默认主题
+     * @param defaultMQProducer
+     * @return
+     */
     public boolean updateTopicRouteInfoFromNameServer(final String topic, boolean isDefault,
         DefaultMQProducer defaultMQProducer) {
         try {
