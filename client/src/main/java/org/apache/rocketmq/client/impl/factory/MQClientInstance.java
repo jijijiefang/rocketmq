@@ -532,6 +532,11 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 从NameServer获取并更新主题路由信息
+     * @param topic
+     * @return
+     */
     public boolean updateTopicRouteInfoFromNameServer(final String topic) {
         return updateTopicRouteInfoFromNameServer(topic, false, null);
     }

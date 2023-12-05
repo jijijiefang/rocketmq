@@ -42,10 +42,11 @@ import org.apache.rocketmq.common.topic.TopicValidator;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.exception.RemotingException;
+import org.apache.rocketmq.remoting.netty.NettyRemotingClient;
 
 /**
  * This class is the entry point for applications intending to send messages. </p>
- *
+ * 此类是打算发送消息的应用程序的入口点
  * It's fine to tune fields which exposes getter/setter methods, but keep in mind, all of them should work well out of
  * box for most scenarios. </p>
  *
@@ -59,15 +60,16 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Wrapping internal implementations for virtually all methods presented in this class.
+     * 包装此类中介绍的几乎所有方法的内部实现
      */
     protected final transient DefaultMQProducerImpl defaultMQProducerImpl;
     private final InternalLogger log = ClientLogger.getLog();
     /**
      * Producer group conceptually aggregates all producer instances of exactly same role, which is particularly
      * important when transactional messages are involved. </p>
-     *
+     * 生产者组在概念上聚合了完全相同角色的所有生产者实例，这在涉及事务性消息时尤为重要。
      * For non-transactional messages, it does not matter as long as it's unique per process. </p>
-     *
+     * 对于非事务性消息，只要每个进程是唯一的，就无关紧要
      * See {@linktourl http://rocketmq.apache.org/docs/core-concept/} for more discussion.
      */
     private String producerGroup;
@@ -79,40 +81,47 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Number of queues to create per default topic.
+     * 每个默认主题要创建的队列数
      */
     private volatile int defaultTopicQueueNums = 4;
 
     /**
      * Timeout for sending messages.
+     * 发送消息超时时间
      */
     private int sendMsgTimeout = 3000;
 
     /**
      * Compress message body threshold, namely, message body larger than 4k will be compressed on default.
+     * 压缩消息体阈值，即大于4k的消息体将默认压缩
      */
     private int compressMsgBodyOverHowmuch = 1024 * 4;
 
     /**
      * Maximum number of retry to perform internally before claiming sending failure in synchronous mode. </p>
-     *
+     * 在同步模式下声明发送失败之前在内部执行的最大重试次数。
      * This may potentially cause message duplication which is up to application developers to resolve.
+     * 这可能会导致消息重复，这取决于应用程序开发人员的解决
      */
     private int retryTimesWhenSendFailed = 2;
 
     /**
      * Maximum number of retry to perform internally before claiming sending failure in asynchronous mode. </p>
-     *
+     * 在异步模式下声明发送失败之前，在内部执行的最大重试次数。
      * This may potentially cause message duplication which is up to application developers to resolve.
+     * 这可能会导致消息重复，这取决于应用程序开发人员的解决
      */
     private int retryTimesWhenSendAsyncFailed = 2;
 
     /**
      * Indicate whether to retry another broker on sending failure internally.
+     * 指示是否在内部发送失败时重试另一个Broker
      */
     private boolean retryAnotherBrokerWhenNotStoreOK = false;
 
     /**
      * Maximum allowed message size in bytes.
+     * 允许的最大消息大小（以字节为单位）
      */
     private int maxMessageSize = 1024 * 1024 * 4; // 4M
 
@@ -139,7 +148,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Constructor specifying producer group.
-     *
+     * 使用指定的生产者组构建
      * @param producerGroup Producer group, see the name-sake field.
      */
     public DefaultMQProducer(final String producerGroup) {
@@ -292,7 +301,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Fetch message queues of topic <code>topic</code>, to which we may send/publish messages.
-     *
+     * 获取主题 topic的消息队列，我们可以向其发送/发布消息
      * @param topic Topic to fetch.
      * @return List of message queues readily to send messages to
      * @throws MQClientException if there is any client error.
@@ -304,7 +313,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Send message in synchronous mode. This method returns only when the sending procedure totally completes. </p>
-     *
+     * 以同步模式发送消息。仅当发送过程完全完成时，此方法才返回
      * <strong>Warn:</strong> this method has internal retry-mechanism, that is, internal implementation will retry
      * {@link #retryTimesWhenSendFailed} times before claiming failure. As a result, multiple messages may potentially
      * delivered to broker(s). It's up to the application developers to resolve potential duplication issue.
@@ -346,7 +355,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Send message to broker asynchronously. </p>
-     *
+     * 异步向代理发送消息
      * This method returns immediately. On sending completion, <code>sendCallback</code> will be executed. </p>
      *
      * Similar to {@link #send(Message)}, internal implementation would potentially retry up to {@link
@@ -386,7 +395,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     /**
      * Similar to <a href="https://en.wikipedia.org/wiki/User_Datagram_Protocol">UDP</a>, this method won't wait for
      * acknowledgement from broker before return. Obviously, it has maximums throughput yet potentials of message loss.
-     *
+     * 与UDP类似，此方法不会在返回之前等待代理的确认。显然，它具有最大的吞吐量，但可能会丢失消息
      * @param msg Message to send.
      * @throws MQClientException if there is any client error.
      * @throws RemotingException if there is any network-tier error.
@@ -568,7 +577,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Send request message in synchronous mode. This method returns only when the consumer consume the request message and reply a message. </p>
-     *
+     * 以同步方式发送请求消息。仅当消费者使用请求消息并回复消息时，此方法才返回
      * <strong>Warn:</strong> this method has internal retry-mechanism, that is, internal implementation will retry
      * {@link #retryTimesWhenSendFailed} times before claiming failure. As a result, multiple messages may potentially
      * delivered to broker(s). It's up to the application developers to resolve potential duplication issue.
@@ -712,7 +721,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * This method is to send transactional messages.
-     *
+     * 发送事务性消息
      * @param msg Transactional message to send.
      * @param tranExecuter local transaction executor.
      * @param arg Argument used along with local transaction executor.
