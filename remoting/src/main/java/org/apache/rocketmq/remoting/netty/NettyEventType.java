@@ -16,9 +16,24 @@
  */
 package org.apache.rocketmq.remoting.netty;
 
+/**
+ * Netty事件类型
+ */
 public enum NettyEventType {
+    /**
+     * 连接
+     */
     CONNECT,
+    /**
+     * 关闭
+     */
     CLOSE,
+    /**
+     * 空闲
+     */
     IDLE,
+    /**
+     * 异常
+     */
     EXCEPTION
 }

@@ -136,7 +136,7 @@ public abstract class NettyRemotingAbstract {
 
     /**
      * Entry of incoming command processing.
-     *
+     * 对传入指令进行处理
      * <p>
      * <strong>Note:</strong>
      * The incoming remoting command may be
@@ -404,6 +404,16 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    /**
+     * 同步调用实现
+     * @param channel
+     * @param request
+     * @param timeoutMillis
+     * @return
+     * @throws InterruptedException
+     * @throws RemotingSendRequestException
+     * @throws RemotingTimeoutException
+     */
     public RemotingCommand invokeSyncImpl(final Channel channel, final RemotingCommand request,
         final long timeoutMillis)
         throws InterruptedException, RemotingSendRequestException, RemotingTimeoutException {
@@ -446,6 +456,17 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    /**
+     * 异步调用实现
+     * @param channel
+     * @param request
+     * @param timeoutMillis
+     * @param invokeCallback
+     * @throws InterruptedException
+     * @throws RemotingTooMuchRequestException
+     * @throws RemotingTimeoutException
+     * @throws RemotingSendRequestException
+     */
     public void invokeAsyncImpl(final Channel channel, final RemotingCommand request, final long timeoutMillis,
         final InvokeCallback invokeCallback)
         throws InterruptedException, RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException {
@@ -527,6 +548,16 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    /**
+     * 单向调用实现
+     * @param channel
+     * @param request
+     * @param timeoutMillis
+     * @throws InterruptedException
+     * @throws RemotingTooMuchRequestException
+     * @throws RemotingTimeoutException
+     * @throws RemotingSendRequestException
+     */
     public void invokeOnewayImpl(final Channel channel, final RemotingCommand request, final long timeoutMillis)
         throws InterruptedException, RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException {
         request.markOnewayRPC();

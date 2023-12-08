@@ -451,6 +451,7 @@ public class MQClientAPIImpl {
         long beginStartTime = System.currentTimeMillis();
         RemotingCommand request = null;
         String msgType = msg.getProperty(MessageConst.PROPERTY_MESSAGE_TYPE);
+        //判断消息类型是否是回复消息
         boolean isReply = msgType != null && msgType.equals(MixAll.REPLY_MESSAGE_FLAG);
         if (isReply) {
             if (sendSmartMsg) {
@@ -468,7 +469,7 @@ public class MQClientAPIImpl {
             }
         }
         request.setBody(msg.getBody());
-
+        //根据发送类型分别进行调用
         switch (communicationMode) {
             case ONEWAY:
                 this.remotingClient.invokeOneway(addr, request, timeoutMillis);
@@ -496,6 +497,18 @@ public class MQClientAPIImpl {
         return null;
     }
 
+    /**
+     * 同步发送消息
+     * @param addr
+     * @param brokerName
+     * @param msg
+     * @param timeoutMillis
+     * @param request
+     * @return
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     */
     private SendResult sendMessageSync(
         final String addr,
         final String brokerName,
@@ -508,6 +521,23 @@ public class MQClientAPIImpl {
         return this.processSendResponse(brokerName, msg, response,addr);
     }
 
+    /**
+     * 异步发送消息
+     * @param addr
+     * @param brokerName
+     * @param msg
+     * @param timeoutMillis
+     * @param request
+     * @param sendCallback
+     * @param topicPublishInfo
+     * @param instance
+     * @param retryTimesWhenSendFailed
+     * @param times
+     * @param context
+     * @param producer
+     * @throws InterruptedException
+     * @throws RemotingException
+     */
     private void sendMessageAsync(
         final String addr,
         final String brokerName,
